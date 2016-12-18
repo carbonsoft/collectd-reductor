@@ -2,9 +2,24 @@
 
 set -eu
 
+prepare() {
+	TMPDIR=/tmp/telegraf/reductor/
+	mkdir -p $TMPDIR
+}
+
 read_module() {
 	local module="$1"
-	sed -E "s/^/$module./; s/ +/=/g" /proc/net/$module/block_list | grep -v "hwid"
+	local tmpfile=$TMPDIR/module
+	local state=0
+	sed -E "s/ +/=/g" /proc/net/$module/block_list > $tmpfile
+	while IFS='.=' read metric db type value; do
+		echo $metric,db=$db,type=$type,module=$module value=$value
+	done <<< "$(grep database $tmpfile)"
+	while IFS='.=' read metric db type value; do
+		echo $metric,type=$db,module=$module value=$type
+	done <<< "$(grep packets $tmpfile)"
+	chroot /app/reductor/ /usr/local/Reductor/bin/modules_ctl get_state $module || state=$?
+	echo activation_error,module=$module value=$state
 }
 
 modules() {
@@ -28,9 +43,10 @@ lists_sizes() {
 }
 
 main() {
+	prepare
 	modules
 	signatures_cache
 	lists_sizes
 }
 
-main "$@"
+"${@:-main}"

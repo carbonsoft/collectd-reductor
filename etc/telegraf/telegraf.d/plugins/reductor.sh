@@ -4,7 +4,7 @@ set -eu
 
 read_module() {
 	local module="$1"
-	sed -E "s/^/$module./; s/ +/=/g" /proc/net/$module/block_list
+	sed -E "s/^/$module./; s/ +/=/g" /proc/net/$module/block_list | grep -v "hwid"
 }
 
 modules() {

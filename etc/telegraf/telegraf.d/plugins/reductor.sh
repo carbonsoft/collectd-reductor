@@ -3,11 +3,13 @@
 set -eu
 
 PLUGIN=/usr/local/Reductor/bin/telegraf_plugin
+INTERVAL="${1:-10s}"
 
 if [ -x /app/reductor/$PLUGIN ]; then
-	sudo chroot /app/reductor/ $PLUGIN
-elif [ -x $PLUGIN ]; then
-	$PLUGIN
+	sudo chroot /app/reductor/ "$PLUGIN" "$INTERVAL"
+	echo $? >> /tmp/test
+elif [ -x "$PLUGIN" ]; then
+	"$PLUGIN" "$INTERVAL"
 else
 	echo "No plugin available"
 	exit 1

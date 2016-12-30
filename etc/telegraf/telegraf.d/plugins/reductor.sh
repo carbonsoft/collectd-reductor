@@ -7,7 +7,6 @@ INTERVAL="${1:-10s}"
 
 if [ -x /app/reductor/$PLUGIN ]; then
 	sudo chroot /app/reductor/ "$PLUGIN" "$INTERVAL"
-	echo $? >> /tmp/test
 elif [ -x "$PLUGIN" ]; then
 	"$PLUGIN" "$INTERVAL"
 else

@@ -11,7 +11,7 @@ yum -y install collectd
 chkconfig --level 345 on
 git clone https://github.com/carbonsoft/collectd-reductor
 cd collectd-reductor
-make install
+make install_collectd
 ```
 
 Настройте отправку метрик на сервер, занимающийся их хранением (откуда их можно брать для анализа, алертинга итд).

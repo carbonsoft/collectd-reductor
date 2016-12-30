@@ -2,7 +2,7 @@
 
 set -eu
 
-PLUGIN=/usr/local/Reductor/bin/telegraf_plugin
+PLUGIN=/usr/local/Reductor/bin/collectd_plugin
 INTERVAL="${1:-10s}"
 
 if [ -x /app/reductor/$PLUGIN ]; then

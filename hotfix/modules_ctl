@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+
+set -eu
+
+. /usr/local/Reductor/etc/const
+
+usage() {
+	util=$(basename $0)
+	echo "Usage:"
+	printf "%-41s : %s\n" "$util activate" "активация всех модулей"
+	printf "%-41s : %s\n" "$util insert" "загрузка всех необходимых модулей в ядро"
+	printf "%-41s : %s\n" "$util unload" "выгрузка всех загруженных модулей из ядра"
+	printf "%-41s : %s\n" "$util list_all" "показать список всех кастомных модулей"
+	printf "%-41s : %s\n" "$util list_match" "показать список всех модулей сравнения"
+	printf "%-41s : %s\n" "$util list_target" "показать список всех модулей редиректа"
+	printf "%-41s : %s\n" "$util info [module_name]" "Информация о модуле на русском языке"
+	printf "%-41s : %s\n" "$util stats collectd" "Информация о модулях в формате collectd plugin"
+	printf "%-41s : %s\n" "$util stats influxdb" "Информация о модулях в формате influxdb line protocol"
+	printf "%-41s : %s\n" "$util get_state [module_name]" "вернуть код возврата = состоянию модуля"
+	printf "%-41s : %s\n" "$util get_state_human [module_name]" "вернуть текстовое описание состояния модуля"
+}
+
+parse_error() {
+	echo "Неожиданные аргументы: $*"
+	usage
+	exit 1
+}
+
+# because of collectd design it's hard to make multiple custom tags
+# instead we keep all of this information in different metrics name
+# also bad thing: we have to evaluate date manually, so I put it in
+# variable. Fewer context switches, more CPU ticks goes to filtering
+stats_module_collectd() {
+	local module="$1"
+	local tmpfile=$TMPDIR/$module
+	local state=0
+	local date=$(date +%s)
+	get_state $module || state=$?
+	echo PUTVAL $HOSTNAME/$module/gauge-activation_error $date:$state
+	egrep "(database|packets)" /proc/net/$module/block_list > $tmpfile || return 0
+
+	while read metric value; do
+		echo "PUTVAL $HOSTNAME/$module/gauge-${metric//./_} $date:$value"
+	done < "$tmpfile"
+}
+
+
+# telegraf/influxdb line protocol is fine, so we can put semantic of
+# metrics into tags. It's really simplify dashboard construction.
+stats_module_influxdb() {
+	local module="$1"
+	local tmpfile=$TMPDIR/$module
+	local state=0
+	get_state $module || state=$?
+	echo activation_error,module=$module value=$state
+	sed -E "s/ +/=/g" /proc/net/$module/block_list > $tmpfile || return 0
+	while IFS='.=' read metric db type value; do
+		echo $metric,db=$db,type=$type,module=$module value=$value
+	done <<< "$(grep database $tmpfile)"
+	while IFS='.=' read metric db type value; do
+		echo $metric,type=$db,module=$module value=$type
+	done <<< "$(grep packets $tmpfile)"
+}
+
+__stats() {
+	local format="$1"
+	stats_module_$format ipt_reductor
+	if $BINDIR/dnsenabled; then
+		stats_module_$format ipt_dnsmatch
+	fi
+	if $BINDIR/dnsenabled --sni; then
+		stats_module_$format ipt_snimatch
+	fi
+}
+
+stats() {
+	if [ "$1" = 'influxdb' ] || [ "$1" = 'collectd' ]; then
+		__stats "$1"
+	else
+		echo "Неизвестный формат $1"
+		exit 2
+	fi
+}
+
+activate() {
+	:
+}
+
+insert() {
+	:
+}
+
+unload() {
+	:
+}
+
+info() {
+	local module="$1"
+	sed -e 's/database.buffer.domains/Число доменов в буферной БД/;
+	s/database.buffer.elements/Число элементов в буферной БД/;
+	s/database.buffer.urls/Число URL в буферной БД/;
+	s/database.readonly.domains/Число доменов в используемой для поиска БД/;
+	s/database.readonly.elements/Число элементов в используемой для поиска БД/;
+	s/database.readonly.urls/Число URL в используемой для поиска БД/;
+	s/packets.slowpath/Число проверенных пакетов большого объёма/;
+	s/packets.checked/Число проверенных пакетов/;
+	s/packets.matched/Число срабатываний модуля/;
+	s/packets.skipped/Число пакетов пропущенных из-за лицензионных ограничений/g;
+	s/registration.hwid/Код установки/;
+	s/registration.state/Состояние активации/;' /proc/net/$module/block_list
+}
+
+list_match() {
+	:
+}
+
+list_target() {
+	:
+}
+
+list_all() {
+	:
+}
+
+get_state() {
+	local state=0
+	local module="$1"
+	local file="/proc/net/$module/block_list"
+	[ -f "$file" ] || return 255
+	grep -q "registration.state.*1" "$file"
+}
+
+get_state_human() {
+	local state=0
+	local module="$1"
+	get_state $module || state=$?
+	if [ "$state" = 0 ]; then
+		echo "Активирован"
+	elif [ "$state" = 1 ]; then
+		echo "Не активирован"
+	elif [ "$state" = 255 ]; then
+		echo "Модуль не загружен"
+	else
+		echo "Состояние модуля неизвестно: $state"
+	fi
+}
+
+get_module_var() {
+	local metric="$1"
+	local module="$2"
+	grep $metric /proc/net/$module/block_list | awk '{print $2}'
+}
+
+main() {
+	case "$#" in
+	1 )
+		case "$1" in
+		activate | insert | unload | list_match | list_target | list_all | usage )
+			"$@"
+			;;
+		* )
+			parse_error "$@"
+			;;
+		esac
+		;;
+	2 )
+		case "$1" in
+		get_state | get_state_human | info | stats )
+			"$@"
+			;;
+		* )
+			parse_error "$@"
+			;;
+		esac
+		;;
+	3 )
+		case "$1" in
+		get_module_var )
+			"$@"
+			;;
+		* )
+			parse_error "$@"
+			;;
+		esac
+		;;
+	* )
+		parse_error "$@"
+		;;
+	esac
+}
+
+main "$@"

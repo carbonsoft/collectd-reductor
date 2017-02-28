@@ -1,5 +1,3 @@
-# Всё сломано подождите
-
 # collectd-reductor
 Плагины для отслеживания метрик для Carbon Reductor
 
@@ -36,3 +34,23 @@ service collectd restart
 - Число проверенных пакетов
 - Число срабатываний модулей
 - Состояние активации
+
+# Для версии ниже 7.5.1 110 / 8.00.07
+
+Выпуск версии с исправлением временно заморожен.
+
+Для того, чтобы всё заработало нужно:
+
+Carbon Reductor 7:
+
+``` shell
+cp -a hotfix/collectd_plugin /usr/local/Reductor/bin/collectd_plugin
+cp -a hotfix/modules_ctl /usr/local/Reductor/bin/modules_ctl
+```
+
+Carbon Reductor 8:
+
+``` shell
+cp -a hotfix/collectd_plugin /app/reductor/usr/local/Reductor/bin/collectd_plugin
+cp -a hotfix/modules_ctl /app/reductor/usr/local/Reductor/bin/modules_ctl
+```

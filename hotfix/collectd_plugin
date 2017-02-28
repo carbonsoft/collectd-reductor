@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+. /usr/local/Reductor/etc/const
+
+set -eu
+
+collectdify() {
+	date=$(date +%s)
+	while read var val; do
+		echo PUTVAL $HOSTNAME/$var $date:$val
+	done
+}
+
+10s() {
+	$BINDIR/modules_ctl stats collectd
+	echo "reductor_cache/gauge-signatures $(wc -l <$CACHEDIR/signatures.cache)" | collectdify
+	find $LISTDIR/rkn/ -type f -exec wc -l {} \; | awk '{print "lists.rkn."$2" "$1}' | sed "s|/.*/rkn.||g; s|lists.rkn|lists/gauge-rkn|g" | collectdify
+	find $LISTDIR/load/ -type f -exec wc -l {} \; | awk '{print "lists.load."$2" "$1}' | sed "s|/.*/||g; s/\.load / /; s|lists.load|lists/gauge-load|g" | collectdify
+}
+
+"${@:-10s}"

@@ -3,12 +3,12 @@
 
 # Установка и настройка
 
-На сервере с Carbon Reductor
+На сервере с Carbon Reductor:
 
 ``` shell
 cd /root/
 yum -y install collectd
-chkconfig --level 345 on
+chkconfig --level 345 collectd on
 git clone https://github.com/carbonsoft/collectd-reductor
 cd collectd-reductor
 make install_collectd

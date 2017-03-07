@@ -32,9 +32,11 @@ parse_error() {
 # variable. Fewer context switches, more CPU ticks goes to filtering
 stats_module_collectd() {
 	local module="$1"
+	local TMPDIR=/tmp/collectd_reductor
 	local tmpfile=$TMPDIR/$module
 	local state=0
 	local date=$(date +%s)
+	mkdir -p $TMPDIR
 	get_state $module || state=$?
 	echo PUTVAL $HOSTNAME/$module/gauge-activation_error $date:$state
 	egrep "(database|packets)" /proc/net/$module/block_list > $tmpfile || return 0
@@ -42,6 +44,7 @@ stats_module_collectd() {
 	while read metric value; do
 		echo "PUTVAL $HOSTNAME/$module/gauge-${metric//./_} $date:$value"
 	done < "$tmpfile"
+	rm -rf $TMPDIR
 }
 
 

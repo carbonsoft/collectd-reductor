@@ -23,7 +23,7 @@ make install_collectd
 Server "10.50.140.131"
 </Plugin>
 ```
-А также исправьте строчку:
+В нём же исправьте строчку:
 
 ```
 Include "/etc/collectd.d/"

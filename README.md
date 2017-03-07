@@ -7,7 +7,7 @@
 
 ``` shell
 cd /root/
-yum -y install collectd
+yum -y install collectd git
 chkconfig --level 345 collectd on
 git clone https://github.com/carbonsoft/collectd-reductor
 cd collectd-reductor

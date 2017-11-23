@@ -13,3 +13,4 @@ install_collectd:
 install_telegraf:
 	rm -rf /etc/telegraf/telegraf.d/plugins
 	cp -a  etc/telegraf/telegraf.d/plugins /etc/telegraf/telegraf.d/plugins
+	usermod -a -G telegraf wheel
